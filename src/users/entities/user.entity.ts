@@ -11,6 +11,7 @@ export interface IUser {
     provider: 'local'|'facebook'|'google';
     provider_id: string | null;
     is_active: boolean;
+    reset_token: string | null;
     created_at: Date;
     updated_at: Date;
     orders?: IOrder[];
@@ -63,6 +64,11 @@ export const UserSchema = new EntitySchema<IUser>({
         is_active: {
             type: 'boolean',
             default: true
+        },
+        reset_token: {
+            type: 'varchar',
+            length: 255,
+            nullable: true
         },
         created_at: {
             type: 'timestamp',

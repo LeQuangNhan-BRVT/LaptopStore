@@ -27,17 +27,17 @@ export class UpdateProductDto {
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   slug?: string;
 
-  @IsNumber()
+  @IsNotEmpty({ message: 'Giá là bắt buộc' })
+  @IsNumber({}, { message: 'Giá phải là số' })
+  @Min(100000, { message: 'Giá phải lớn hơn hoặc bằng 100000' })
   @Type(() => Number)
-  @Min(0)
-  @IsOptional()
-  price?: number;
+  price: number;
 
-  @IsNumber()
-  @Type(() => Number)
-  @Min(0)
   @IsOptional()
-  sale_price?: number;
+  @IsNumber({}, { message: 'Giá khuyến mãi phải là số' })
+  @Min(100000, { message: 'Giá khuyến mãi phải lớn hơn hoặc bằng 100000' })
+  @Type(() => Number)
+  sale_price?: number | null;
 
   @IsNumber()
   @Type(() => Number)

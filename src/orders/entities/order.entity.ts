@@ -13,7 +13,7 @@ export interface IOrder {
     final_amount: number;
     shipping_address: string;
     payment_method_id: number;
-    status: string;
+    status: OrderStatus;
     notes: string | null;
     created_at: Date | null
     updated_at: Date | null
@@ -21,6 +21,37 @@ export interface IOrder {
     payment_method?: IPaymentMethod;
     order_items?: IOrderItem[];
     
+}
+
+export enum OrderStatus {
+    PENDING = 'pending', //chờ duyệt đơn
+    PAYMENT = 'payment', //Chờ thanh toán
+    PAID = 'paid',//đã thanh toán
+    PROCESSING = 'processing', //đang xử lý
+    SHIPPED = 'shipped',//đang giao
+    DELIVERED = 'delivered',//đã giao thành công
+    CANCELLED = 'cancelled',//đã hủy
+   
+}
+
+export const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+    [OrderStatus.PENDING]: [OrderStatus.PAYMENT, OrderStatus.CANCELLED],
+    [OrderStatus.PAYMENT]: [OrderStatus.PAID, OrderStatus.CANCELLED],
+    [OrderStatus.PAID]: [OrderStatus.PROCESSING],
+    [OrderStatus.PROCESSING]: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
+    [OrderStatus.SHIPPED]: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
+    [OrderStatus.DELIVERED]: [],
+    [OrderStatus.CANCELLED]: [],
+}
+
+export const VALID_TRANSITIONS_COD: Record<OrderStatus, OrderStatus[]> = {
+    [OrderStatus.PENDING]: [OrderStatus.CANCELLED, OrderStatus.PROCESSING],
+    [OrderStatus.PROCESSING]: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
+    [OrderStatus.SHIPPED]: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
+    [OrderStatus.PAYMENT]: [],
+    [OrderStatus.PAID]: [],
+    [OrderStatus.DELIVERED]: [],
+    [OrderStatus.CANCELLED]: [],
 }
 
 export const OrderSchema = new EntitySchema<IOrder>({
@@ -63,7 +94,7 @@ export const OrderSchema = new EntitySchema<IOrder>({
         },
         status: {
             type: 'varchar',
-            default: 'Pending'
+            default: OrderStatus.PENDING
         },
         notes: {
             type: 'text',

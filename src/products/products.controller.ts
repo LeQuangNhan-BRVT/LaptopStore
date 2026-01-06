@@ -170,6 +170,7 @@ export class ProductsController {
     }
     return this.productsService.updateOrCreateSpecs(id, updateSpecsDto);
   }
+  
   @Get(':id/specs')
   async findSpecs(@Param('id', ParseIntPipe) id: number){
     return this.productsService.findSpecs(id)

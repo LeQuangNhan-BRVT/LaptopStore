@@ -1,16 +1,23 @@
-import { IsNotEmpty, IsString, IsNumber, IsOptional, IsBoolean, Min, IsArray } from "class-validator";
-import { Type, Transform } from "class-transformer";
-
+import {
+  IsNotEmpty,
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsBoolean,
+  Min,
+  IsArray, 
+} from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 
 export class CreateProductDto {
   @IsNotEmpty({ message: 'SKU là bắt buộc' })
   @IsString({ message: 'SKU phải là chuỗi' })
-  @Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   sku: string;
 
   @IsNotEmpty({ message: 'Tên sản phẩm là bắt buộc' })
   @IsString({ message: 'Tên sản phẩm phải là chuỗi' })
-  @Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   name: string;
 
   @IsNotEmpty({ message: 'Brand ID là bắt buộc' })
@@ -25,13 +32,13 @@ export class CreateProductDto {
 
   @IsNotEmpty({ message: 'Giá là bắt buộc' })
   @IsNumber({}, { message: 'Giá phải là số' })
-  @Min(0, { message: 'Giá phải lớn hơn hoặc bằng 0' })
+  @Min(100000, { message: 'Giá phải lớn hơn hoặc bằng 100000' })
   @Type(() => Number)
   price: number;
 
   @IsOptional()
   @IsNumber({}, { message: 'Giá khuyến mãi phải là số' })
-  @Min(0, { message: 'Giá khuyến mãi phải lớn hơn hoặc bằng 0' })
+  @Min(100000, { message: 'Giá khuyến mãi phải lớn hơn hoặc bằng 100000' })
   @Type(() => Number)
   sale_price?: number | null;
 
@@ -43,7 +50,7 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsString({ message: 'Mô tả phải là chuỗi' })
-  @Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   description?: string | null;
 
   @IsOptional()
@@ -51,7 +58,16 @@ export class CreateProductDto {
   @Type(() => Boolean)
   is_active?: boolean;
 
-  @IsString({ each: true, message: 'Mỗi tag phải là một chuỗi ký tự' })
+  @Transform(({ value }) => {
+    if (Array.isArray(value)) return value;
+
+    if (typeof value === 'string') {
+      return value.split(',').map((t: string) => t.trim());
+    }
+
+    return [];
+  })
   @IsArray({ message: 'Tags phải là một danh sách (mảng)' })
-  tags?: string[];
+  @IsString({ each: true, message: 'Mỗi tag phải là một chuỗi ký tự' })
+  tags?: string[] | string;
 }

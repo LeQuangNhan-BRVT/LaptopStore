@@ -20,6 +20,7 @@ import type { Response } from 'express';
 import { RegisterDto } from './dto/register.dto';
 import { GoogleAuthGuard } from './guards/google.guard';
 import { ConfigService } from '@nestjs/config';
+import { ForgotPasswordDto, ResetPasswordDto } from 'src/accounts/entities/update.entity';
 
 @Controller('auth')
 export class AuthController {
@@ -62,35 +63,6 @@ export class AuthController {
   @UseGuards(GoogleAuthGuard)
   async googleAuth(@Req() req) {}
 
-  // @Get('google/callback')
-  // @UseGuards(GoogleAuthGuard)
-  // async googleAuthCallBack(@Req() req, @Res() res: Response) {
-  //   // 3. Lấy URL Frontend động từ file .env
-  //   // (Lúc này nó sẽ là link Cloudflare của bạn)
-  //   const frontendUrl = this.configService.get<string>('FRONTEND_URL');
-
-  //   // Nếu người dùng hủy hoặc lỗi
-  //   if (!req.user) {
-  //     return res.redirect(`${frontendUrl}/login?link_social=google&error=access_denied`);
-  //   }
-
-  //   const social = req.user as { email: string|null; full_name: string|null; provider: 'google'; provider_id: string };
-
-  //   const result = await this.authService.validateSocialUser({
-  //     email: social?.email ?? null,
-  //     full_name: social?.full_name ?? null,
-  //     provider: 'google',
-  //     provider_id: social?.provider_id,
-  //   });
-
-  //   if (result.action === 'LOGIN') {
-  //     // 4. Redirect về đúng domain frontend
-  //     return res.redirect(`${frontendUrl}/auth/callback?token=${encodeURIComponent(result.access_token)}`);
-  //   }
-
-  //   // Trường hợp cần liên kết tài khoản hoặc lỗi khác
-  //   return res.redirect(`${frontendUrl}/login?link_social=google`);
-  // }
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
   async googleAuthCallBack(@Req() req, @Res() res: Response) {
@@ -126,5 +98,17 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt')) // Dùng Guard 'jwt' (tên đặt trong JwtStrategy)
   getProfile(@Req() req) {
     return req.user;
+  }
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() forgotpassDto: ForgotPasswordDto){
+    return this.authService.forgotPassword(forgotpassDto.email)
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() resetPass: ResetPasswordDto){
+    return this.authService.resetPassword(resetPass.token, resetPass.newPassword)
   }
 }

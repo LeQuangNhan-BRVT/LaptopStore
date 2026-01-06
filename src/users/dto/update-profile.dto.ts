@@ -15,11 +15,6 @@ export class UpdateProfileDto{
     @IsString({message: 'Địa chỉ phải là một chuỗi ký tự'})
     address?: string
 
-    @IsOptional()
-    @IsDate()
-    birthday?: Date
-
-
 
 }
 

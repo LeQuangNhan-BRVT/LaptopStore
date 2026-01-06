@@ -13,6 +13,7 @@ import { Response, Request } from 'express';
 import { SepayService } from './sepay.service';
 import { ConfigService } from '@nestjs/config';
 import { OrdersService } from 'src/orders/orders.service';
+import { OrderStatus } from 'src/orders/entities/order.entity';
 
 @Controller('payment/sepay')
 export class SepayController {
@@ -24,9 +25,7 @@ export class SepayController {
     private readonly ordersService: OrdersService,
   ) {}
 
-  /**
-   * ✅ API tạo payment
-   */
+ 
   @Post('create')
   async createSepay(@Body() dto: { invoiceNumber: string; amount: number }) {
     return this.sepayService.initCheckout(
@@ -36,9 +35,7 @@ export class SepayController {
     );
   }
 
-  /**
-   * ✅ Callback từ SePay (success/error/cancel)
-   */
+
   @Get('callback')
   async handleCallback(
     @Query('status') status: string,
@@ -64,26 +61,26 @@ export class SepayController {
       // 2. Xử lý theo trạng thái trả về
       if (status === 'success') {
         
-        await this.ordersService.updateStatus(order.order_id, 'paid');
+        await this.ordersService.updateStatus(order.order_id, OrderStatus.PAID);
         
         this.logger.log(`Order ${orderCode} updated to paid`);
 
-        // ✅ Redirect về frontend báo thành công
+       
         return res.redirect(`${redirectUrl}?status=success&orderCode=${orderCode}`);
       }
 
       if (status === 'cancel') {
         this.logger.warn(`Payment cancelled for order: ${orderCode}`);
         
-        // ✅ Cập nhật Database: Đã hủy
-        await this.ordersService.updateStatus(order.order_id, 'cancelled');
+        
+        await this.ordersService.updateStatus(order.order_id, OrderStatus.CANCELLED);
 
         return res.redirect(`${redirectUrl}?status=cancel&orderCode=${orderCode}`);
       }
 
       // Trường hợp lỗi (error)
       this.logger.error(`Payment failed for order: ${orderCode}`);
-      await this.ordersService.updateStatus(order.order_id, 'Cancelled'); // Hoặc 'Failed'
+      await this.ordersService.updateStatus(order.order_id, OrderStatus.CANCELLED); // Hoặc 'Failed'
       return res.redirect(`${redirectUrl}?status=error&orderCode=${orderCode}`);
 
     } catch (error) {
@@ -93,10 +90,7 @@ export class SepayController {
     }
   }
 
-  /**
-   * ✅ IPN Webhook từ SePay (POST)
-   * SePay sẽ gửi notification về endpoint này khi thanh toán hoàn tất
-   */
+ 
   @Post('ipn')
   async handleIPN(
     @Body() body: any,
@@ -106,7 +100,7 @@ export class SepayController {
     this.logger.debug(`IPN Body: ${JSON.stringify(body)}`);
 
     try {
-      // ✅ Verify signature
+   
       const isValid = this.sepayService.verifyIPNSignature(body);
       
       if (!isValid) {
@@ -117,15 +111,10 @@ export class SepayController {
         };
       }
 
-      // ✅ Xử lý theo status
+      
       const { order_invoice_number, status, amount } = body;
 
       this.logger.log(`IPN - Order: ${order_invoice_number}, Status: ${status}, Amount: ${amount}`);
-
-      // ✅ TODO: Cập nhật database
-      // await this.orderService.updatePaymentStatus(order_invoice_number, status);
-
-      // ✅ Trả về success cho SePay
       return { 
         status: 'success',
         message: 'IPN processed successfully' 
@@ -140,9 +129,6 @@ export class SepayController {
     }
   }
 
-  /**
-   * ✅ API kiểm tra trạng thái đơn hàng
-   */
   @Get('order/:invoiceNumber')
   async getOrderStatus(@Query('invoiceNumber') invoiceNumber: string) {
     try {

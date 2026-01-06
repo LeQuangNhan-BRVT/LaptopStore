@@ -82,4 +82,24 @@ export class UsersService {
     await this.userRepository.update(id, updateData);
     return this.getById(id);
   }
+  async updateResetToken(id: number, token: string){
+    if(!id){
+      throw new Error('Người dùng có ID không tồn tại')
+    }
+    return await this.userRepository.update(id, {reset_token: token})
+    
+  }
+  async findByResetToken(token: string): Promise<IUser | null> {
+    return await this.userRepository.findOne({ 
+        where: { reset_token: token } 
+    });
+}
+
+
+async updatePasswordAndClearToken(userId: number, newPasswordHash: string) {
+    await this.userRepository.update(userId, { 
+        password_hash: newPasswordHash,
+        reset_token: null // Xóa token đi
+    });
+}
 }

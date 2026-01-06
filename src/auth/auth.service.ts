@@ -2,7 +2,8 @@ import {
   ConflictException,
   Injectable,
   UnauthorizedException,
-  Logger, ForbiddenException
+  Logger, ForbiddenException,
+  BadRequestException
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AccountsService } from 'src/accounts/accounts.service';
@@ -11,6 +12,10 @@ import * as bcrypt from 'bcrypt';
 import { IAccount } from 'src/accounts/entities/account.entity';
 import { IUser } from 'src/users/entities/user.entity';
 import { use } from 'passport';
+import { MailerService } from '@nestjs-modules/mailer';
+import {v4 as uuidv4} from 'uuid'
+
+
 
 @Injectable()
 export class AuthService {
@@ -18,6 +23,7 @@ export class AuthService {
     private accountService: AccountsService,
     private userService: UsersService,
     private jwtService: JwtService,
+    private mailerService: MailerService,
   ) {}
 
   private readonly logger = new Logger(AuthService.name);
@@ -44,12 +50,17 @@ export class AuthService {
   }
   async loginAdmin(admin: IAccount) {
     //payload để lưu thông tin trong token
-    
+    let knowRole:string = ''
+    if(admin.role_id === 1){
+      knowRole = 'admin'
+    }else{
+      knowRole = 'staff'
+    }
     const payload = {
       email: admin.email,
       sub: admin.account_id,
       role: admin.role_id,
-      type: 'admin'
+      type: knowRole
     };
     return {
       access_token: this.jwtService.sign(payload),
@@ -74,6 +85,35 @@ export class AuthService {
     // Ẩn trường mật khẩu trước khi trả về
     delete (user as any).password_hash;
     return user as IUser;
+  }
+
+  async forgotPassword(email: string){
+    const user = await this.userService.findOneByEmail(email)
+    if(!user){
+      throw new BadRequestException('Email không tồn tại')
+    }
+    const resetToken = uuidv4()
+    await this.userService.updateResetToken(user.user_id, resetToken)
+
+    const resetLink = `https://dh52111401.id.vn/reset-password?token=${resetToken}`
+    await this.mailerService.sendMail({
+      to: email,
+      subject: 'Hãy đặt lại mật khẩu',
+      html: `<p>Nhấn vào đây để đặt lại mật khẩu: <a href="${resetLink}">Đặt lại mật khẩu</a></p>`,
+    })
+    return {message: 'Vui lòng kiểm tra email để đặt lại mật khẩu'}
+  }
+
+  async resetPassword(token: string, newPass: string) {
+    const user = await this.userService.findByResetToken(token);
+    if (!user) throw new BadRequestException('Token không hợp lệ hoặc đã hết hạn');
+  
+    const hashedPassword = await bcrypt.hash(newPass, 10);
+    
+    // Cập nhật pass mới và xóa token
+    await this.userService.updatePasswordAndClearToken(user.user_id, hashedPassword);
+    
+    return { message: 'Đổi mật khẩu thành công' };
   }
 
   async loginUser(user: IUser) {

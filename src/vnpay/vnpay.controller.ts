@@ -3,6 +3,7 @@ import { Response } from 'express';
 import { VnpayService } from './vnpay.service';
 import { ConfigService } from '@nestjs/config';
 import { OrdersService } from 'src/orders/orders.service';
+import { OrderStatus } from 'src/orders/entities/order.entity';
 @Controller('vnpay')
 export class VnpayController {
   constructor(
@@ -36,13 +37,13 @@ export class VnpayController {
     if (result.isValid && result.responseCode === '00') {
       
       // Thanh toán thành công
-      await this.ordersService.updateStatusByOrderCode(result.orderId, 'paid');
+      await this.ordersService.updateStatusByOrderCode(result.orderId, OrderStatus.PAID);
       
       return res.redirect(
         `${frontendUrl}?payment=success&order=${result.orderId}&amount=${result.amount}`,
       );
     } else if (result.responseCode === '24') {
-      // User hủy giao dịch
+      await this.ordersService.updateStatusByOrderCode(result.orderId, OrderStatus.CANCELLED);
       return res.redirect(
         `${frontendUrl}?payment=cancel&order=${result.orderId}&message=${encodeURIComponent('Bạn đã hủy giao dịch')}`,
       );

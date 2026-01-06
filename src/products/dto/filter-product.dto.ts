@@ -7,7 +7,6 @@ export class FilterProductDto {
   keyword?: string;
 
   @IsOptional()
-  // ⚠️ Logic này giúp chuyển chuỗi rỗng thành undefined để không bị lỗi Validation
   @Transform(({ value }) => {
     if (value === '' || value === null) return undefined;
     return Number(value);
@@ -26,6 +25,7 @@ export class FilterProductDto {
   max_price?: number;
 
   @IsOptional()
+  @IsString()
   sort_by?: string;
 
   @IsOptional()
@@ -44,4 +44,16 @@ export class FilterProductDto {
   @IsOptional()
   @Type(() => Number)
   limit?: number;
+
+  @IsOptional()
+  @IsString()
+  category_id?: string;
+
+  @IsOptional()
+  @IsString()
+  brand_id?: string;
+
+  @IsOptional()
+  @IsString()
+  is_active?: string;
 }

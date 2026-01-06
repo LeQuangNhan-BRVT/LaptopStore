@@ -35,14 +35,18 @@ export class ProductsService {
   ) {}
 
   async findAll(query: any, page: number, limit: number) {
-    const { category_id, brand_id, min_price, max_price, search } = query;
+    const { category_id, brand_id, min_price, max_price, search, is_active } =
+      query;
     const qb = this.productRepository.createQueryBuilder('product');
     qb.leftJoinAndSelect('product.brand', 'brand');
     qb.leftJoinAndSelect('product.category', 'category');
     qb.leftJoinAndSelect('product.images', 'images');
     qb.andWhere('product.deleted_at IS NULL');
-    qb.andWhere('product.is_active = :isActive', { isActive: true });
 
+    if (is_active !== undefined && is_active !== '') {
+      const isActiveBool = String(is_active) === 'true';
+      qb.andWhere('product.is_active = :isActive', { isActive: isActiveBool });
+    }
     if (category_id) {
       qb.andWhere('product.category_id = :category_id', { category_id });
     }
@@ -61,15 +65,15 @@ export class ProductsService {
     if (search) {
       qb.andWhere('product.name LIKE :search', { search: `%${search}%` });
     }
-    let sortBy = 'product.created_at'
-    let order: 'ASC'|'DESC' = 'DESC'
-    if(query.sort_by === 'price'){
-      sortBy = 'product.price'
-    }else if(query.sort_by === 'name'){
-      sortBy = 'product.name'
+    let sortBy = 'product.created_at';
+    let order: 'ASC' | 'DESC' = 'DESC';
+    if (query.sort_by === 'price') {
+      sortBy = 'product.price';
+    } else if (query.sort_by === 'name') {
+      sortBy = 'product.name';
     }
-    if(query.order && (query.order === 'ASC' || query.order === 'DESC')){
-      order = query.order
+    if (query.order && (query.order === 'ASC' || query.order === 'DESC')) {
+      order = query.order;
     }
     qb.orderBy(sortBy, order);
     qb.skip((page - 1) * limit);
@@ -102,32 +106,38 @@ export class ProductsService {
   async findOne(id: number): Promise<IProduct | null> {
     const product = await this.productRepository.findOne({
       where: { product_id: id, deleted_at: IsNull() },
-      relations: ['images', 'brand', 'category', 'specification'],
+      relations: [
+        'images',
+        'brand',
+        'category',
+        'specification',
+        'product_tag',
+      ],
     });
     if (!product) return null;
 
     return product;
   }
-  private async preloadTags(tagNames: string[]): Promise<ITag[]> {
-    if (!tagNames || tagNames.length === 0) return [];
-    const uniqueNames = [...new Set(tagNames.map((t) => t.trim()))];
-    const tags: ITag[] = [];
-    for (const name of uniqueNames) {
-      const existingTag = await this.tagRepository.findOne({ where: { name } });
-      if (existingTag) {
-        tags.push(existingTag);
-      } else {
-        const slug = defaultSlugify(name, {
-          lower: true,
-          strict: true,
-          trim: true,
+  private async preloadTags(tags: string[]): Promise<ITag[]> {
+    return await Promise.all(
+      tags.map(async (tagName) => {
+        const existingTag = await this.tagRepository.findOne({
+          where: { name: tagName },
         });
-        const newTag = this.tagRepository.create({ name, slug });
-        const savedTag = await this.tagRepository.save(newTag);
-        tags.push(savedTag);
-      }
-    }
-    return tags;
+
+        if (existingTag) {
+          return existingTag;
+        }
+
+        // Nếu chưa có, tạo tag mới
+        const newTag = this.tagRepository.create({
+          name: tagName,
+          slug: this.createSlug(tagName),
+          description: '',
+        });
+        return await this.tagRepository.save(newTag);
+      }),
+    );
   }
 
   private createSlug(name: string): string {
@@ -145,13 +155,8 @@ export class ProductsService {
     imagePath: string,
   ): Promise<IProduct> {
     const slug = this.createSlug(createProductDto.name);
-    let tagEntities: ITag[] = [];
-    if (createProductDto.tags) {
-        tagEntities = await this.preloadTags(createProductDto.tags);
-    }
-    delete createProductDto.tags
-    const filename = imagePath.replace(/^uploads[\\/]/, '').replace(/\\/g, '/');
-    const imageUrl = `http://localhost:3000/uploads/${filename}`;
+
+    // 1. Check SKU trùng lặp
     const skuExisting = await this.productRepository.findOne({
       where: { sku: createProductDto.sku },
     });
@@ -159,15 +164,50 @@ export class ProductsService {
       throw new BadRequestException('SKU đã tồn tại');
     }
 
+    let tagEntities: ITag[] = [];
+    if (createProductDto.tags) {
+      // Ép kiểu về mảng bất kể nó là string hay array
+      const tagsInput = Array.isArray(createProductDto.tags)
+        ? createProductDto.tags
+        : [createProductDto.tags];
+
+      tagEntities = await this.preloadTags(tagsInput);
+    }
+    let saleP = createProductDto.sale_price
+      ? Number(createProductDto.sale_price)
+      : null;
+    if (saleP) {
+      if (saleP > createProductDto.price) {
+        throw new BadRequestException('Giá khuyến mãi đang lớn hơn giá bán');
+      }
+    }
+    // Xóa tags khỏi DTO để tránh lỗi khi insert vào bảng Products vì bảng Products ko có cột tags
+    delete createProductDto.tags;
+
+    const filename = imagePath.split(/[/\\]/).pop(); // Lấy phần tên file cuối cùng
+    const imageUrl = `http://localhost:3000/uploads/${filename}`;
+
     const newProduct = this.productRepository.create({
       ...createProductDto,
-      is_active: createProductDto.is_active ?? true,
+      // Chuyển đổi các kiểu dữ liệu số từ FormData vì FormData gửi số dạng chuỗi
+      price: Number(createProductDto.price),
+      sale_price: createProductDto.sale_price
+        ? Number(createProductDto.sale_price)
+        : null,
+      quantity: Number(createProductDto.quantity),
+      brand_id: Number(createProductDto.brand_id),
+      category_id: Number(createProductDto.category_id),
+
+      is_active: createProductDto.is_active
+        ? String(createProductDto.is_active) === 'true'
+        : true,
       slug: slug,
       product_tag: tagEntities,
     });
 
     const savedProduct = await this.productRepository.save(newProduct);
 
+    // 6. Lưu thông tin ảnh vào bảng product_images
     const productImage = this.productImageRepository.create({
       product_id: savedProduct.product_id,
       image_url: imageUrl,
@@ -180,7 +220,6 @@ export class ProductsService {
   }
 
   async update(id: number, updateProductDto: UpdateProductDto) {
-    
     const updatedProduct = await this.productRepository.findOne({
       where: { product_id: id },
       relations: ['product_tag'],
@@ -199,11 +238,26 @@ export class ProductsService {
       updatedProduct.product_tag = tags;
       delete updateProductDto.tags;
     }
+    let saleP = updateProductDto.sale_price
+      ? Number(updateProductDto.sale_price)
+      : null;
+    if (saleP) {
+      if (saleP > updateProductDto.price) {
+        throw new BadRequestException('Giá khuyến mãi đang lớn hơn giá bán');
+      } else if (
+        saleP <=
+        updateProductDto.price - updateProductDto.price * 0.25
+      ) {
+        throw new BadRequestException(
+          `Chỉ giảm giá tối đa 25% giá gốc! Giá trị tối đa ${updateProductDto.price * 0.25}`,
+        );
+      }
+    }
     const updated = this.productRepository.merge(
       updatedProduct,
       updateProductDto,
     );
-    return this.productRepository.save(updated)
+    return this.productRepository.save(updated);
   }
 
   async addImages(
@@ -274,6 +328,9 @@ export class ProductsService {
       ram,
       cpu,
       storage,
+      category_id,
+      brand_id,
+      is_active,
       page = 1,
       limit = 12,
     } = filters;
@@ -281,27 +338,71 @@ export class ProductsService {
     const query = this.productRepository.createQueryBuilder('product');
     query.leftJoinAndSelect('product.specification', 'specs');
     query.leftJoinAndSelect('product.images', 'images');
+    query.leftJoinAndSelect('product.brand', 'brand');
+    query.leftJoinAndSelect('product.category', 'category');
     query.where('product.deleted_at IS NULL');
-    query.andWhere('product.is_active = :isActive', { isActive: true });
+
+    if (is_active) {
+      const isActiveBool = is_active === 'true';
+      query.andWhere('product.is_active = :isActive', {
+        isActive: isActiveBool,
+      });
+    }
+
+    if (category_id && category_id !== '') {
+      query.andWhere('product.category_id = :catId', { catId: category_id });
+    }
+
+    if (brand_id && brand_id !== '') {
+      query.andWhere('product.brand_id = :brandId', { brandId: brand_id });
+    }
 
     if (keyword) {
+      const searchTerms = keyword.trim().split(/\s+/);
       query.andWhere(
         new Brackets((qb) => {
-          qb.where('product.name LIKE :keyword', {
-            keyword: `%${keyword}%`,
-          }).orWhere('product.description LIKE :keyword', {
-            keyword: `%${keyword}%`,
+          searchTerms.forEach((term, index) => {
+            const paramName = `keyword_${index}`;
+            qb.andWhere(
+              new Brackets((subQb) => {
+                subQb.where(`product.name LIKE :${paramName}`, {
+                  [paramName]: `%${term}%`,
+                });
+              }),
+            );
           });
         }),
       );
+      query.addSelect(
+        `CASE WHEN product.name LIKE :startKw THEN 0 WHEN product.name LIKE :containKw THEN 1 ELSE 2 END`,
+        'relevance',
+      );
+      query.setParameter('startKw', `${keyword}%`);
+      query.setParameter('containKw', `%${keyword}`);
+      query.orderBy('relevance', 'ASC');
+      query.addOrderBy('product.name', 'ASC');
+    } else {
+      if (sort_by === 'newest' || !sort_by) {
+        query.orderBy('product.created_at', 'DESC');
+      }
     }
 
     if (min_price) {
-      query.andWhere('product.price >= :minPrice', { minPrice: min_price });
+      query.andWhere(
+        'COALESCE(product.sale_price, product.price) >= :minPrice',
+        {
+          minPrice: min_price,
+        },
+      );
     }
 
     if (max_price) {
-      query.andWhere('product.price <= :maxPrice', { maxPrice: max_price });
+      query.andWhere(
+        'COALESCE(product.sale_price, product.price) <= :maxPrice',
+        {
+          maxPrice: max_price,
+        },
+      );
     }
 
     if (cpu) {
@@ -370,9 +471,18 @@ export class ProductsService {
 
     if (sort_by) {
       if (sort_by === 'price_asc') {
-        query.orderBy('product.price', 'ASC');
+        // Logic: Tạo cột ảo 'real_price' = sale_price (nếu có) hoặc price
+        query.addSelect(
+          'COALESCE(product.sale_price, product.price)',
+          'real_price',
+        );
+        query.orderBy('real_price', 'ASC');
       } else if (sort_by === 'price_desc') {
-        query.orderBy('product.price', 'DESC');
+        query.addSelect(
+          'COALESCE(product.sale_price, product.price)',
+          'real_price',
+        );
+        query.orderBy('real_price', 'DESC');
       } else if (sort_by === 'newest') {
         query.orderBy('product.created_at', 'DESC');
       }
