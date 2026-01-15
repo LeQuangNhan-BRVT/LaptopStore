@@ -21,7 +21,7 @@ export class OrdersController {
 
   @Post()
   @UseGuards(AuthGuard('jwt'))
-  create(@Req() req: any, @Body() createOrderDto: CreateOrderDto) {
+  async create(@Req() req: any, @Body() createOrderDto: CreateOrderDto) {
     const userId = req.user.user_id;
     return this.ordersService.create(userId, createOrderDto);
   }

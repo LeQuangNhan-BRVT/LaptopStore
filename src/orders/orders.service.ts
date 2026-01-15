@@ -23,10 +23,10 @@ export interface FindAllOrderParams {
   status?: string;
   sortBy?: string;
   sortOrder?: 'ASC' | 'DESC';
-  search?: string; // 👇 Mới
-  payment_method_id?: number; // 👇 Mới
-  start_date?: string; // 👇 Mới
-  end_date?: string; // 👇 Mới
+  search?: string; 
+  payment_method_id?: number; 
+  start_date?: string; 
+  end_date?: string;
 }
 @Injectable()
 export class OrdersService {
@@ -301,7 +301,7 @@ export class OrdersService {
     }
 
     if (end_date) {
-      // Ví dụ: 2024-01-01 -> So sánh <= 2024-01-01 23:59:59
+      // Ví dụ: 2024-01-01 -> x <= 2024-01-01 23:59:59
       query.andWhere('order.created_at <= :endDate', {
         endDate: `${end_date} 23:59:59`,
       });
@@ -349,7 +349,7 @@ export class OrdersService {
     try {
       const order = await queryRunner.manager.findOne(OrderSchema, {
         where: { order_id: orderId },
-        relations: ['order_items'],
+        relations: ['order_items'], lock: { mode: 'pessimistic_write' },
       });
       if (
         !order ||

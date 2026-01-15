@@ -173,13 +173,18 @@ export class ProductsService {
 
       tagEntities = await this.preloadTags(tagsInput);
     }
-    let saleP = createProductDto.sale_price
+
+    const saleP = createProductDto.sale_price
       ? Number(createProductDto.sale_price)
       : null;
     if (saleP) {
-      if (saleP > createProductDto.price) {
+      if (saleP >= createProductDto.price) {
         throw new BadRequestException('Giá khuyến mãi đang lớn hơn giá bán');
       }
+    }
+    const discountPercent = ((createProductDto.price - createProductDto.sale_price!) / createProductDto.price) *100
+    if(discountPercent > 50){
+      throw new BadRequestException('Theo quy định, mức giảm giá không được vượt quá 50%.')
     }
     // Xóa tags khỏi DTO để tránh lỗi khi insert vào bảng Products vì bảng Products ko có cột tags
     delete createProductDto.tags;
@@ -207,7 +212,6 @@ export class ProductsService {
 
     const savedProduct = await this.productRepository.save(newProduct);
 
-    // 6. Lưu thông tin ảnh vào bảng product_images
     const productImage = this.productImageRepository.create({
       product_id: savedProduct.product_id,
       image_url: imageUrl,
@@ -238,20 +242,17 @@ export class ProductsService {
       updatedProduct.product_tag = tags;
       delete updateProductDto.tags;
     }
-    let saleP = updateProductDto.sale_price
+    const saleP = updateProductDto.sale_price
       ? Number(updateProductDto.sale_price)
       : null;
     if (saleP) {
-      if (saleP > updateProductDto.price) {
+      if (saleP >= updateProductDto.price) {
         throw new BadRequestException('Giá khuyến mãi đang lớn hơn giá bán');
-      } else if (
-        saleP <=
-        updateProductDto.price - updateProductDto.price * 0.25
-      ) {
-        throw new BadRequestException(
-          `Chỉ giảm giá tối đa 25% giá gốc! Giá trị tối đa ${updateProductDto.price * 0.25}`,
-        );
       }
+    }
+    const discountPercent = ((updateProductDto.price - updateProductDto.sale_price!) / updateProductDto.price) *100
+    if(discountPercent > 50){
+      throw new BadRequestException('Theo quy định, mức giảm giá không được vượt quá 50%.')
     }
     const updated = this.productRepository.merge(
       updatedProduct,
