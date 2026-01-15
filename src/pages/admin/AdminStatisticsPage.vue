@@ -73,7 +73,7 @@ const chartData = computed(() => ({
     {
       type: 'line' as const,
       label: 'Số đơn hàng',
-      borderColor: '#dc3545', // Màu đỏ bootstrap
+      borderColor: '#dc3545',
       backgroundColor: '#dc3545',
       data: statsData.value.map((item) => item.order_count),
       tension: 0.3, // Độ cong của đường
@@ -96,6 +96,19 @@ const chartOptions = {
     legend: { position: 'top' as const },
     tooltip: {
       callbacks: {
+        title: function (context: any) {
+          const first = context[0]
+          const baseLabel = first.label || ''
+          const index = first.dataIndex
+          const item = statsData.value[index]
+
+          if (filterType.value === 'week' && item && item.date) {
+            // Ví dụ: "Thứ 2 - 10/12"
+            return `${baseLabel} - ${item.date}`
+          }
+
+          return baseLabel
+        },
         label: function (context: any) {
           let label = context.dataset.label || ''
           if (label) {

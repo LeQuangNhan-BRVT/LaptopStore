@@ -2,10 +2,10 @@
 import { ref, onMounted } from 'vue'
 import { brandService } from '@/services/brandService'
 import type { IBrand } from '@/types/Brand'
-import { useAuthStore } from '@/store/auth';
+import { useAuthStore } from '@/store/auth'
+import Swal from 'sweetalert2'
 
-
-const authStore = useAuthStore();
+const authStore = useAuthStore()
 const brands = ref<IBrand[]>([])
 const isLoading = ref(true)
 const errorMessage = ref<string | null>(null)
@@ -67,16 +67,24 @@ const handleAddBrand = async () => {
   }
 }
 const handleDelete = async (id: number) => {
-  if (!confirm('Bạn có chắc muốn xóa sản phẩm này không?')) {
-    return
-  }
   try {
     await brandService.deleteBrand(id)
-    alert('Xóa thành công')
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: 'Xóa thành công!',
+      showConfirmButton: false,
+      timer: 1000,
+    })
     window.location.reload()
   } catch (error: any) {
     console.error('Lỗi khi xóa', error)
-    alert(error.response?.data?.message || 'Xóa thất bại')
+    Swal.fire({
+      icon: 'error',
+      title: 'Lỗi',
+      text: error.response?.data?.message || 'Xóa thất bại!',
+    })
   }
 }
 onMounted(() => {
@@ -89,7 +97,7 @@ onMounted(() => {
     <div class="card shadow-sm mb-4">
       <div class="card-body" v-if="authStore.isAdmin">
         <h5 class="card-title">Thêm thương hiệu</h5>
-        <form @submit.prevent="handleAddBrand" >
+        <form @submit.prevent="handleAddBrand">
           <div class="row g-3">
             <div class="col-md-6">
               <label for="brandName" class="form-label"
@@ -164,9 +172,11 @@ onMounted(() => {
               <td>{{ brand.name }}</td>
 
               <td v-if="authStore.isAdmin">
-                
-
-                <button class="btn btn-danger btn-sm" v-if="authStore.isAdmin" @click="handleDelete(brand.brand_id)">
+                <button
+                  class="btn btn-danger btn-sm"
+                  v-if="authStore.isAdmin"
+                  @click="handleDelete(brand.brand_id)"
+                >
                   <i class="bi bi-trash-fill"></i> Xóa
                 </button>
               </td>

@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { categoryService } from '@/services/categoryService'
 import type { ICategories } from '@/types/Category'
 import { useAuthStore } from '@/store/auth'
+import Swal from 'sweetalert2'
 
 const authStore = useAuthStore()
 const category = ref<ICategories[]>([])
@@ -39,16 +40,24 @@ const handleAddCategory = async () => {
   }
 }
 const handleDelete = async (id: number) => {
-  if (!confirm('Bạn có chắc muốn xóa sản phẩm này không?')) {
-    return
-  }
   try {
     await categoryService.deleteCategory(id)
-    alert('Xóa thành công')
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: 'Xóa thành công!',
+      showConfirmButton: false,
+      timer: 1000,
+    })
     window.location.reload()
   } catch (error: any) {
     console.error('Lỗi khi xóa', error)
-    alert(error.response?.data?.message || 'Xóa thất bại')
+    Swal.fire({
+      icon: 'error',
+      title: 'Lỗi',
+      text: error.response?.data?.message || 'Xóa thất bại!',
+    })
   }
 }
 onMounted(() => {

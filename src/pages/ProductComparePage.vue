@@ -3,7 +3,6 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { productService } from '@/services/productService'
 
-// Khai báo Puter (đừng quên thêm script puter vào index.html)
 declare const puter: any
 
 const route = useRoute()
@@ -145,7 +144,7 @@ const analyzeWithAI = async () => {
               <li class="list-group-item"><b>CPU:</b> {{ product1.specification?.cpu }}</li>
               <li class="list-group-item"><b>RAM:</b> {{ product1.specification?.ram }}</li>
               <li class="list-group-item"><b>GPU:</b> {{ product1.specification?.gpu }}</li>
-              <li class="list-group-item"><b>Màn:</b> {{ product1.specification?.screen }}</li>
+              <li class="list-group-item"><b>Màn hình:</b> {{ product1.specification?.screen }}</li>
             </ul>
           </div>
         </div>
@@ -200,7 +199,7 @@ const analyzeWithAI = async () => {
               <li class="list-group-item"><b>CPU:</b> {{ product2.specification?.cpu }}</li>
               <li class="list-group-item"><b>RAM:</b> {{ product2.specification?.ram }}</li>
               <li class="list-group-item"><b>GPU:</b> {{ product2.specification?.gpu }}</li>
-              <li class="list-group-item"><b>Màn:</b> {{ product2.specification?.screen }}</li>
+              <li class="list-group-item"><b>Màn hình:</b> {{ product2.specification?.screen }}</li>
             </ul>
           </div>
         </div>

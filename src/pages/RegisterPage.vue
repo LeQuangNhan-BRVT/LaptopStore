@@ -27,8 +27,14 @@ const handleLocalRegister = async () => {
 
   // Validate cơ bản phía client
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const fullnameRegex = /^[\p{L}\s]+$/u
   if (!trimmedFullName) {
     errorMessage.value = 'Họ và tên là bắt buộc.'
+    isLoadingLocal.value = false
+    return
+  }
+  if (!fullnameRegex.test(trimmedFullName)) {
+    errorMessage.value = 'Họ và tên chỉ được chứa chữ cái và khoảng trắng.'
     isLoadingLocal.value = false
     return
   }
@@ -87,11 +93,20 @@ const loginWithGoogle = () => {
 
         <form @submit.prevent="handleLocalRegister">
           <div class="mb-3">
-            <label for="fullName" class="form-label">Họ và Tên</label>
-            <input type="text" class="form-control" id="fullName" v-model="fullName" required />
+            <label for="fullName" class="form-label"
+              >Họ và Tên <span class="text-danger">*</span></label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="fullName"
+              v-model="fullName"
+              minlength="3"
+              required
+            />
           </div>
           <div class="mb-3">
-            <label for="email" class="form-label">Email</label>
+            <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
             <input type="email" class="form-control" id="email" v-model="email" required />
           </div>
           <div class="mb-3">
@@ -105,11 +120,15 @@ const loginWithGoogle = () => {
             />
           </div>
           <div class="mb-3">
-            <label for="password" class="form-label">Mật khẩu</label>
+            <label for="password" class="form-label"
+              >Mật khẩu <span class="text-danger">*</span></label
+            >
             <input type="password" class="form-control" id="password" v-model="password" required />
           </div>
           <div class="mb-4">
-            <label for="confirmPassword" class="form-label">Xác nhận mật khẩu</label>
+            <label for="confirmPassword" class="form-label"
+              >Xác nhận mật khẩu <span class="text-danger">*</span></label
+            >
             <input
               type="password"
               class="form-control"

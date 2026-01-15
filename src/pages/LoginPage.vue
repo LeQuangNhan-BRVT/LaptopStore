@@ -48,6 +48,7 @@ const handleLocalLogin = async () => {
             v-model="email"
             required
             placeholder="Nhập email của bạn"
+            maxlength="100"
           />
         </div>
         <div class="mb-3">
@@ -58,6 +59,7 @@ const handleLocalLogin = async () => {
             v-model="password"
             required
             placeholder="Nhập mật khẩu..."
+            maxlength="100"
           />
         </div>
 
