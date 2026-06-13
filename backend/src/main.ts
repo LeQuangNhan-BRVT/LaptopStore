@@ -10,7 +10,7 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       'http://localhost:5173',
-      'https://dh52111401.id.vn', // Frontend tunnel
+     
       
     ],
     methods: 'GET, HEAD, PUT, POST, PATCH, DELETE, OPTIONS',
